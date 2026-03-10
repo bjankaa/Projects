@@ -1,0 +1,4 @@
+9;4;5;fekete
+18;9;9;feher
+12;5;7;fekete
+14;7;7;feher

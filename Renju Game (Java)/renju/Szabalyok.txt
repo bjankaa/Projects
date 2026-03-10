@@ -1,0 +1,25 @@
+				Játékszabályok
+
+	Lepések
+
+Játékot a fekete játékos kezdi középről. A program a zökkenő mentesség érdekében ezt a játékos helyett megteszi.
+Ezután fehér következik. A továbbiakban felváltva lépnek a játékosok.
+
+	Nyertes
+
+Az a játékos nyer, aki először rak ki öt követ egy töretlen sorba. A fehér bárhogy győzhet.
+A fehér automatikusan megnyeri a játékot, ha a fekete tiltott alakzatot rak ki.
+
+	Tiltott lépések/alakzatok (csak fekete számára)
+
+Overline - 6db fekete kő van 1 sorban
+Inlinedouble - amikor 1 sor/oszlop/átló 2 féleképpen is be lehet fejezni, ezzel lehetetlenné téve a nyerés kivédését
+Double Three - 2db nyitott végű 3 kőből álló sor/oszlop/átló :
+	magyaran vagy 2db olyan sor/oszlop/átló van aminek szabad terület a vége
+	vagy
+	egy kő lerakásával nyitott végű 4es sor/oszlop/átló hozható létre, és a másik csak egy nyitott hármas
+Double Four - 2db nyitott végű 4 kőből álló sor/oszlop/átló
+
+
+ha képi ábrázolás jobban segít:
+https://www.renju.net/study/rules.php
