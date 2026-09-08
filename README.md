@@ -33,7 +33,7 @@ Key features:
 -------------------------------------------------------------------------
 
 ### AlexNet Image Classification
-**Python · PyTorch**
+**Python · Keras**
 
 Implementation and training of an AlexNet-based convolutional neural network for image classification.
 
