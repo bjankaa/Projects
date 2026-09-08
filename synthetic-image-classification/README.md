@@ -49,8 +49,8 @@ The generated dataset contains images from the same 10 categories
 used by CIFAR-10:
 
 - Airplane
-- Automobile
 - Bird
+- Car
 - Cat
 - Deer
 - Dog
