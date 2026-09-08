@@ -4,19 +4,13 @@ A collection of software development projects covering Java, backend, full-stack
 
 ## Projects
 
-### Online Multiplayer Card Game
+### Online Multiplayer Card Game - ULTI
 
 **Go · Vue.js · PostgreSQL · Docker**
 
-Full-stack multiplayer card game with a Go backend and Vue.js frontend.
+A full-stack online multiplayer card game based on a simplified version of the traditional Hungarian card game Ulti.
 
-Key features:
-- REST APIs
-- JWT-based authentication
-- Real-time communication using WebSockets
-- PostgreSQL database
-- Core game logic
-- Dockerized development environment
+The application includes a Go backend, Vue.js frontend, real-time multiplayer communication, authentication, relational database support, and a containerized architecture.
 
 [View project](./multiplayer-card-game)
 
@@ -26,13 +20,9 @@ Key features:
 
 **Java**
 
-Desktop implementation of the Renju strategy board game, developed using object-oriented design principles.
+A desktop implementation of the Renju strategy board game developed using object-oriented design.
 
-Key features:
-- Game logic and state management
-- Move validation
-- User interface components
-- Object-oriented application structure
+The application includes game logic, move and rule validation, pattern-based win detection, a graphical user interface, score tracking, and persistent game results.
 
 [View project](./renju-java)
 
@@ -67,3 +57,21 @@ The project evaluates how well the model generalizes to real CIFAR-10
 images and compares Adam and Nadam optimization.
 
 [View project](./synthetic-image-classification)
+
+
+## Technologies
+
+**Languages**  
+Java · Go · Python · JavaScript · TypeScript · SQL
+
+**Web & Backend**  
+Vue.js · REST APIs · WebSockets · JWT
+
+**Databases**  
+PostgreSQL · MySQL
+
+**Machine Learning**  
+TensorFlow · Keras · NumPy
+
+**Tools & Infrastructure**  
+Git · Docker · Docker Compose
