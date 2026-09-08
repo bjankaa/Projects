@@ -27,9 +27,12 @@ export class Event {
             case "card_played":
                 return {
                     cardId: this.payload.cardid,
-                    playerIndex: this.payload.playerindex
+                    playerIndex: this.payload.playerindex,
+                    color: this.payload.color
                 };
             case "your_turn":
+                return true;
+            case "not_your_turn":
                 return true;
             case "you_won":
                 return {

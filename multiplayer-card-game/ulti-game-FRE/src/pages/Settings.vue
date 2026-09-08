@@ -2,8 +2,7 @@
     <div class="settings-container">
         <base-card>
             <h1>Settings</h1>
-            
-            <!-- Change Email Section -->
+
             <section class="settings-section">
                 <h2>Change Email</h2>
                 <form @submit.prevent="changeEmail">
@@ -48,7 +47,6 @@
                 </form>
             </section>
 
-            <!-- Change Password Section -->
             <section class="settings-section">
                 <h2>Change Password</h2>
                 <form @submit.prevent="changePassword">
@@ -142,7 +140,6 @@ export default {
             this.emailMessage = '';
             this.emailError = false;
 
-            // Validation
             if (this.emailForm.newEmail !== this.emailForm.confirmEmail) {
                 this.emailMessage = 'New emails do not match!';
                 this.emailError = true;
@@ -181,7 +178,6 @@ export default {
             this.passwordMessage = '';
             this.passwordError = false;
 
-            // Validation
             if (this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
                 this.passwordMessage = 'New passwords do not match!';
                 this.passwordError = true;

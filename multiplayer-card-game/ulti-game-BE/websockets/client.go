@@ -133,13 +133,3 @@ func (c *Client) writeMessages() {
 
 	}
 }
-
-//--------------------------NOT USING IT-----------------------------------
-//broadcast for all clients FOR NOW, FOR TEST
-// we are getting the message and writing it to every egress
-// for wsclients := range c.manager.clients {
-// 	wsclients.egress <- payload
-// }
-
-// log.Println(messageType)
-// log.Println(string(payload))

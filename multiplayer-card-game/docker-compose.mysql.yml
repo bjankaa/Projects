@@ -1,0 +1,54 @@
+services:
+  backend:
+    environment:
+      DB_DRIVER: mysql
+      DATABASE_URL_FILE: /run/secrets/database_url
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+    secrets:
+      - database_url
+      - jwt_secret
+    volumes:
+      - ./ulti-game-BE/server.crt:/app/server.crt:ro
+      - ./ulti-game-BE/server.key:/app/server.key:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-kf", "https://localhost:3000/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  mysql:
+    image: mysql:8.0
+    container_name: ulti-mysql
+    environment:
+      MYSQL_DATABASE: ulti
+      MYSQL_USER: ulti
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    secrets:
+      - mysql_password
+      - mysql_root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  mysqldata:
+    driver: local
+
+secrets:
+  database_url:
+    file: ./secrets/database_url.mysql.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  mysql_password:
+    file: ./secrets/mysql_password.txt
+  mysql_root_password:
+    file: ./secrets/mysql_root_password.txt

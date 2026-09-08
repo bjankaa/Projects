@@ -3,7 +3,9 @@
     <the-header></the-header>
     <main class="main-content">
       <router-view v-slot="slotProps">
-        <component :is="slotProps.Component"></component>
+        <keep-alive :include="['Profile']">
+          <component :is="slotProps.Component"></component>
+        </keep-alive>
       </router-view>
     </main>
     <the-footer></the-footer>

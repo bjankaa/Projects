@@ -67,4 +67,8 @@ export default {
     playAgainVotes(state){
         return state.playAgainVotes;
     }
+    ,
+    roundColor(state){
+        return state.roundColor;
+    }
 }

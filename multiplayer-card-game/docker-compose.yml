@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ulti-postgres
+    environment:
+      POSTGRES_DB: ulti
+      POSTGRES_USER: ulti
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  backend:
+    build:
+      context: ./ulti-game-BE
+    image: ulti-game-backend:latest
+    container_name: ulti-backend
+    environment:
+      DB_DRIVER: postgres
+      DATABASE_URL_FILE: /run/secrets/database_url
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+    secrets:
+      - database_url
+      - jwt_secret
+    volumes:
+      - ./ulti-game-BE/server.crt:/app/server.crt:ro
+      - ./ulti-game-BE/server.key:/app/server.key:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-kf", "https://localhost:3000/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+
+  frontend:
+    build:
+      context: ./ulti-game-FRE
+    image: ulti-game-frontend:latest
+    container_name: ulti-frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./ulti-game-FRE/server.crt:/etc/nginx/certs/server.crt:ro
+      - ./ulti-game-FRE/server.key:/etc/nginx/certs/server.key:ro
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local
+  mysqldata:
+    driver: local
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  database_url:
+    file: ./secrets/database_url.postgres.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  mysql_password:
+    file: ./secrets/mysql_password.txt
+  mysql_root_password:
+    file: ./secrets/mysql_root_password.txt

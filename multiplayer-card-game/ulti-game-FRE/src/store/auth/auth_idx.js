@@ -11,6 +11,7 @@ export default {
             loggedIn: false,
             token: null,
             email: '',
+            score: 0,
         };
     },
     getters,

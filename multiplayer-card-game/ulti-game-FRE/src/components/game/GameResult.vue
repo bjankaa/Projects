@@ -99,7 +99,6 @@ export default {
     },
     exitToHub() {
       if (this.hasVoted) {
-        // Send denial vote
         const event = {
           type: 'play_again',
           id: this.$store.getters['ws/gameID'],

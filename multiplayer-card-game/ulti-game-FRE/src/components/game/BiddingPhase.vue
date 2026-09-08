@@ -124,12 +124,10 @@ export default {
       });
     },
     canDeclareColor(color) {
-      // If no game color yet, all colors are available
       if (!this.gameColor) {
         return true;
       }
       
-      // Must choose stronger color to one-up, or piros can be chosen again
       const currentStrength = this.colorStrength[this.gameColor];
       const newStrength = this.colorStrength[color];
       

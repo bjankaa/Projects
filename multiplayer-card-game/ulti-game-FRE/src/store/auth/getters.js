@@ -7,6 +7,9 @@ export default {
     },
     email(state) {
         return state.email;
+    },
+    score(state) {
+        return state.score;
     }
 
 }

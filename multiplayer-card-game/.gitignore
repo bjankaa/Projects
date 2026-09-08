@@ -1,1 +1,21 @@
-*.code-workspace
+# Secrets
+secrets/
+
+# Environment variables
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Build output
+dist/
+build/
+bin/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,42 +1,45 @@
 <template>
     <div class="game-container">
-        <!-- Left Player Name -->
         <div class="side-player left-player">
             <h3>{{ getPlayerName(getLeftPlayerIndex()) }}</h3>
         </div>
-        
-        <!-- Right Player Name -->
         <div class="side-player right-player">
             <h3>{{ getPlayerName(getRightPlayerIndex()) }}</h3>
         </div>
-        
-        <!-- Round Winner Notification -->
-        <div v-if="showRoundWinnerNotification" class="round-winner-notification">
+        <div v-if="showRoundWinnerNotification && lastRoundWinner !== -1" class="round-winner-notification">
             {{ getPlayerName(lastRoundWinner) }} won the round!
         </div>
         
-        <!-- Played Cards Area - Centered -->
         <div class="played-cards-area">
             <h2>Played Cards:</h2>
             <div class="cards-display">
                 <!-- Left position -->
                 <div class="card-position left">
                     <div v-if="leftCard" class="card-content">
-                        <p>Card: {{ leftCard.cardId }}</p>
+                        <img :src="getCardImage(leftCard.cardId)" 
+                             :alt="`Card ${leftCard.cardId}`" 
+                             class="played-card-image"
+                             @error="handleImageError($event, leftCard.cardId)" />
                     </div>
                 </div>
                 
                 <!-- Center position (your card) -->
                 <div class="card-position center">
                     <div v-if="centerCard" class="card-content">
-                        <p>Card: {{ centerCard }}</p>
+                        <img :src="getCardImage(centerCard)" 
+                             :alt="`Card ${centerCard}`" 
+                             class="played-card-image"
+                             @error="handleImageError($event, centerCard)" />
                     </div>
                 </div>
                 
                 <!-- Right position -->
                 <div class="card-position right">
                     <div v-if="rightCard" class="card-content">
-                        <p>Card: {{ rightCard.cardId }}</p>
+                        <img :src="getCardImage(rightCard.cardId)" 
+                             :alt="`Card ${rightCard.cardId}`" 
+                             class="played-card-image"
+                             @error="handleImageError($event, rightCard.cardId)" />
                     </div>
                 </div>
             </div>
@@ -61,7 +64,7 @@
                     <li v-for="cardId in playerHand" :key="cardId" class="pcard">
                         <playing-card
                             :card-id="cardId"
-                            :disabled="!yourTurn"
+                            :disabled="!yourTurn || !isCardPlayable(cardId)"
                             @clicked="handleCardClick"
                         ></playing-card>
                     </li>
@@ -84,6 +87,7 @@ export default {
             isClicked: false,
             showRoundWinnerNotification: false,
             lastRoundWinner: -1,
+            winnerTimer: null,
         };
     },
     computed: {
@@ -135,47 +139,56 @@ export default {
         Name() {
             const idx = this.playerIndex;
             return this.playerNames[idx] || `Player ${idx + 1}`;
+        },
+        roundColor() {
+            return this.$store.getters["ws/roundColor"];
         }
     },
     watch: {
         newRound(val) {
             this.card = 0;
             this.isClicked = false;
-            // Hide notification when new round starts
-            this.showRoundWinnerNotification = true;
         },
         roundWinner(newWinner, oldWinner) {
-            // Show notification when round winner changes (and it's valid)
             if (newWinner !== -1 && newWinner !== oldWinner) {
                 this.lastRoundWinner = newWinner;
-                this.showRoundWinnerNotification = false;
+                this.showRoundWinnerNotification = true;
+
+                if (this.winnerTimer) {
+                    clearTimeout(this.winnerTimer);
+                    this.winnerTimer = null;
+                }
+
+                this.winnerTimer = setTimeout(() => {
+                    this.showRoundWinnerNotification = false;
+                    this.winnerTimer = null;
+                }, 3000);
             }
         }
     },
     methods: {
         getPlayerName(playerIndex) {
-            return this.playerNames[playerIndex] || `Player ${playerIndex + 1}`;
+            if (playerIndex === -1 || playerIndex === undefined || playerIndex === null) {
+                return 'Unknown Player';
+            }
+            return this.playerNames[playerIndex];
         },
         
         getCardAtPosition(position) {
             const roundStarter = this.roundWinner;
             if (this.playerIndex === -1 || roundStarter === -1) return null;
             
-            // Calculate relative position in turn order
             const myPosition = (this.playerIndex - roundStarter + 3) % 3;
             
             let targetPlayerIndex;
             
             if (myPosition === 0) {
-                // I'm the starter (first)
                 if (position === 'left') targetPlayerIndex = (roundStarter + 2) % 3;
                 if (position === 'right') targetPlayerIndex = (roundStarter + 1) % 3;
             } else if (myPosition === 1) {
-                // I'm second
                 if (position === 'left') targetPlayerIndex = (roundStarter + 2) % 3;
                 if (position === 'right') targetPlayerIndex = roundStarter;
             } else if (myPosition === 2) {
-                // I'm third (last)
                 if (position === 'left') targetPlayerIndex = roundStarter;
                 if (position === 'right') targetPlayerIndex = (roundStarter + 1) % 3;
             }
@@ -185,7 +198,6 @@ export default {
         
         handleCardClick(cardId) {
             if (!this.yourTurn) {
-                console.log("it not your turn you can't put a card down");
                 return;
             }
             console.log("Player choose: ", cardId);
@@ -193,7 +205,7 @@ export default {
 
             this.$store.commit("ws/deleteCard", cardId);
 
-            // Load the card in the middle
+
             this.isClicked = true;
 
             const event = {
@@ -228,6 +240,42 @@ export default {
             if (myPosition === 1) return roundStarter;
             if (myPosition === 2) return roundStarter;
             return -1;
+        },
+        
+        handleImageError(event, cardId) {
+            event.target.style.display = 'none';
+            event.target.parentElement.innerHTML = `<p>Card: ${cardId}</p>`;
+        },
+        
+        getCardImage(cardId) {
+            if (!cardId) return '';
+            try {
+                return new URL(`../../assets/kartya/${cardId}.jpg`, import.meta.url).href;
+            } catch (e) {
+                console.error(`Failed to load image for card ${cardId}:`, e);
+                return '';
+            }
+        },
+
+        isCardPlayable(cardId) {
+
+            if (!this.roundColor) return true;
+
+            const cardColor = this.getCardColor(cardId);
+           
+            const suitexists = this.playerHand.some(id => this.getCardColor(id) === this.roundColor);
+            if (suitexists && cardColor !== this.roundColor) {
+               return false;
+            } 
+            return true;
+        },
+
+        getCardColor(cardId) {
+            if (cardId >= 1 && cardId <= 8) return 'tok';
+            if (cardId >= 9 && cardId <= 16) return 'makk';
+            if (cardId >= 17 && cardId <= 24) return 'zold';
+            if (cardId >= 25 && cardId <= 32) return 'piros';
+            return '';
         }
     }
 }
@@ -240,7 +288,7 @@ export default {
     height: 100%;
 }
 
-/* Side Player Names */
+
 .side-player {
     position: fixed;
     top: 50%;
@@ -270,7 +318,6 @@ export default {
     white-space: nowrap;
 }
 
-/* Round Winner Notification */
 .round-winner-notification {
     position: fixed;
     top: calc(50% - 200px);
@@ -394,6 +441,18 @@ export default {
     width: 100%;
     padding: 1rem;
     color: var(--text-white);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.played-card-image {
+    max-width: 100%;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 4px;
 }
 
 .card-position div {
@@ -484,7 +543,6 @@ export default {
     }
 }
 
-/* Player Section with Background */
 .player-section {
     position: fixed;
     bottom: 42px;

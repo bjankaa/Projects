@@ -8,7 +8,7 @@
         <h3>Talon Cards (received):</h3>
         <div v-if="!talonRevealed" class="hidden-talon">
           <button @click="revealTalon" class="reveal-button">
-            🎴 Reveal Talon Cards
+            Reveal Talon Cards
           </button>
           <p class="skip-hint">Or keep your original hand:</p>
           <button @click="skipExchange" class="skip-button">
@@ -112,7 +112,6 @@ export default {
       return this.$store.getters['ws/cards'];
     },
     originalHand() {
-      // Filter out talon cards to show only original 10 cards
       return this.allCards.filter(cardId => !this.talonCards.includes(cardId));
     },
     finalHandSize() {
@@ -129,10 +128,8 @@ export default {
     skipExchange() {
       console.log('TalonExchange: Skipping exchange, discarding talon cards:', this.talonCards);
       
-      // Discard both talon cards to keep original hand
       this.$store.dispatch('ws/sendTalonExchange', this.talonCards);
       
-      // Reset state
       this.talonRevealed = false;
       this.selectedCards = [];
     },
@@ -162,7 +159,6 @@ export default {
       
       this.$store.dispatch('ws/sendTalonExchange', this.selectedCards);
       
-      // Reset state
       this.talonRevealed = false;
       this.selectedCards = [];
     }

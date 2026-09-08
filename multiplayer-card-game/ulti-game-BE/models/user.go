@@ -12,49 +12,68 @@ type User struct {
 	Name       string
 	Email      string `binding:"required"`
 	Password   string `binding:"required"`
-	State      string `binding:"required"`
+	State      string
 	IsLoggedIn bool
+	Score      int
 }
 
 // saving user to the database
 func (u User) Save() error {
-	query := `INSERT INTO users(name, email, password, state, isloggedin) VALUES(?,?,?,?,?)`
-	stmt, err := database.Database.Prepare(query)
-
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
+	// hash the password
 	hashPassword, err := utility.HashPassword(u.Password)
 	if err != nil {
 		return err
 	}
 
-	result, err := stmt.Exec(u.Name, u.Email, hashPassword, u.State, false)
+	// Postgres supports RETURNING; MySQL uses LastInsertId
+	if database.Currentdb == database.Postgres {
+		query := `INSERT INTO users(name, email, password, isloggedin) VALUES($1,$2,$3,$4) RETURNING id`
+		query = database.NormalizeQuery(database.Currentdb, query)
+		stmt, err := database.Database.Prepare(query)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		row := stmt.QueryRow(u.Name, u.Email, hashPassword, false)
+		if err := row.Scan(&u.ID); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	query := `INSERT INTO users(name, email, password, isloggedin) VALUES($1,$2,$3,$4)`
+	query = database.NormalizeQuery(database.Currentdb, query)
+	stmt, err := database.Database.Prepare(query)
 	if err != nil {
 		return err
 	}
-
-	id, err := result.LastInsertId()
-
-	u.ID = id
-	return err
+	defer stmt.Close()
+	res, err := stmt.Exec(u.Name, u.Email, hashPassword, false)
+	if err != nil {
+		return err
+	}
+	lastID, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	u.ID = lastID
+	return nil
 }
 
 func (u *User) ValidateUser() error {
-	query := "SELECT id, name, password, state, isloggedin FROM users WHERE email = ?"
+	query := "SELECT id, name, password, isloggedin FROM users WHERE email = $1"
+	query = database.NormalizeQuery(database.Currentdb, query)
 	row := database.Database.QueryRow(query, u.Email)
 
 	var hashedPassword string
-	var loggedInInt int
+	var loggedIn bool
 
-	err := row.Scan(&u.ID, &u.Name, &hashedPassword, &u.State, &loggedInInt)
+	err := row.Scan(&u.ID, &u.Name, &hashedPassword, &loggedIn)
 	if err != nil {
 		return errors.New("credentials couldn't be read")
 	}
 
-	u.IsLoggedIn = loggedInInt == 1
+	u.IsLoggedIn = loggedIn
 
 	passWordIsValid := utility.CheckPasswordHash(u.Password, hashedPassword)
 	if !passWordIsValid {
@@ -67,7 +86,7 @@ func (u *User) ValidateUser() error {
 
 // get all users from database (every registered user)
 func GetAllUsers() ([]User, error) {
-	query := "SELECT * FROM users"
+	query := "SELECT id, name, email, password, isloggedin FROM users"
 	rows, err := database.Database.Query(query)
 
 	if err != nil {
@@ -79,7 +98,7 @@ func GetAllUsers() ([]User, error) {
 
 	for rows.Next() {
 		var user User
-		err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.State, &user.IsLoggedIn)
+		err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.IsLoggedIn)
 
 		if err != nil {
 			return nil, err
@@ -91,24 +110,40 @@ func GetAllUsers() ([]User, error) {
 }
 
 func GetUserByID(id int64) (*User, error) {
-	query := "SELECT id, name, email, password, state, isloggedin FROM users WHERE id = ?"
+	query := "SELECT id, name, email, password, isloggedin, score FROM users WHERE id = $1"
+	query = database.NormalizeQuery(database.Currentdb, query)
 	row := database.Database.QueryRow(query, id)
 
 	var u User
-	var loggedInInt int
+	var loggedIn bool
 
-	err := row.Scan(&u.ID, &u.Name, &u.Email, &u.Password, &u.State, &loggedInInt)
+	err := row.Scan(&u.ID, &u.Name, &u.Email, &u.Password, &loggedIn, &u.Score)
 	if err != nil {
 		return nil, err
 	}
 
-	u.IsLoggedIn = loggedInInt == 1
+	u.IsLoggedIn = loggedIn
 	return &u, nil
 
 }
 
+// Add to user's score (can be negative to subtract)
+func (u *User) AddToScore(point int) error {
+	query := "UPDATE users SET score = score + $1 WHERE id = $2"
+	query = database.NormalizeQuery(database.Currentdb, query)
+
+	_, err := database.Database.Exec(query, point, u.ID)
+	if err != nil {
+		return err
+	}
+
+	u.Score += point
+	return nil
+}
+
 func (u *User) SetLoggedIn(loggedIn bool) error {
-	query := "UPDATE users SET isloggedin = ? WHERE id = ?"
+	query := "UPDATE users SET isloggedin = $1 WHERE id = $2"
+	query = database.NormalizeQuery(database.Currentdb, query)
 
 	_, err := database.Database.Exec(query, loggedIn, u.ID)
 
@@ -121,8 +156,10 @@ func (u *User) SetLoggedIn(loggedIn bool) error {
 }
 
 func (u *User) UpdateEmail(newEmail string) error {
-	query := "UPDATE users SET email = ? WHERE id = ?"
+	query := "UPDATE users SET email = $1 WHERE id = $2"
+	query = database.NormalizeQuery(database.Currentdb, query)
 	stmt, err := database.Database.Prepare(query)
+
 	if err != nil {
 		return err
 	}
@@ -138,11 +175,14 @@ func (u *User) UpdateEmail(newEmail string) error {
 }
 
 func (u *User) UpdatePassword(hashedPassword string) error {
-	query := "UPDATE users SET password = ? WHERE id = ?"
+	query := "UPDATE users SET password = $1 WHERE id = $2"
+	query = database.NormalizeQuery(database.Currentdb, query)
 	stmt, err := database.Database.Prepare(query)
+
 	if err != nil {
 		return err
 	}
+
 	defer stmt.Close()
 
 	_, err = stmt.Exec(hashedPassword, u.ID)

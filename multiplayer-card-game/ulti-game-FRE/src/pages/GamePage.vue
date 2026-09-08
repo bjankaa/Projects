@@ -1,32 +1,18 @@
 <template>
-    <!-- Waiting Room -->
     <waiting-room v-if="!gameStarted"></waiting-room>
-    
-    <!-- Game Interruption Message -->
     <interruption-message :show="showInterruption" />
-    
-    <!-- Game Area (only show when game started) -->
     <template v-if="gameStarted">
-        <!-- Exit Button -->
         <button class="exit-button" @click="showExitConfirmation">✕</button>
         
-        <!-- Exit Confirmation Dialog -->
         <exit-dialog 
             :show="showExitDialog" 
             @confirm="confirmExit" 
             @cancel="showExitDialog = false"
         />
         
-        <!-- Bidding Phase -->
         <bidding-phase v-if="gamePhase === 'bidding'" />
-        
-        <!-- Talon Exchange Phase -->
         <talon-exchange v-if="gamePhase === 'talon_exchange'" />
-        
-        <!-- Playing Phase -->
         <playing-area v-if="gamePhase === 'playing'" />
-        
-        <!-- Game Result Phase -->
         <game-result v-if="gamePhase === 'ended'" />
     </template>
 </template>
@@ -69,7 +55,6 @@ export default {
     },
     watch: {
         gameStarted(newVal, oldVal) {
-            // When game goes from started to not started (interrupted)
             if (oldVal === true && newVal === false) {
                 this.showInterruption = true;
                 setTimeout(() => {
@@ -79,7 +64,6 @@ export default {
             }
         },
         gameid(newVal, oldVal) {
-            // When game is reset (play_again_denied or exit)
             if (oldVal !== 0 && newVal === 0 && this.gamePhase === 'waiting') {
                 this.$router.push('/game');
             }

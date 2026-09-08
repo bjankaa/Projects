@@ -1,4 +1,5 @@
 import { Event } from '../../models/Event.js';
+import router from '../../route';
 
 export default{
 
@@ -17,7 +18,17 @@ export default{
                 throw new Error('No authentication token available');
             }
 
-            const socket = new WebSocket (`ws://localhost:3000/game?token=${token}`);
+            const isDev = import.meta.env.DEV;
+            let wsBase;
+            if (isDev) {
+                // Use wss if the page is loaded over https, else ws
+                const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                wsBase = `${wsScheme}://localhost:3000`;
+            } else {
+                const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                wsBase = `${wsScheme}://${window.location.host}`;
+            }
+            const socket = new WebSocket(`${wsBase}/game?token=${token}`);
 
             socket.onopen = () => {
                 const payload = {
@@ -64,6 +75,10 @@ export default{
                     context.commit('setYourTurn', true);
                     break;
                 
+                case 'not_your_turn':
+                    context.commit('setYourTurn', false);
+                    break;
+                
                 case 'you_won':
                     if(returned_data != null) {
                         console.log(`You won the round! Points: ${returned_data.points}`);
@@ -77,7 +92,7 @@ export default{
                         // Delay clearing the cards so players can see the result
                         setTimeout(() => {
                             context.commit('setRoundResult', returned_data);
-                        }, 2000); // 2 second delay
+                        }, 2000); 
                     }
                     break;
                 
@@ -140,6 +155,9 @@ export default{
                     if(returned_data != null) {
                         console.log('Game ended:', returned_data);
                         context.commit('gameEnd', returned_data);
+                        if (typeof returned_data.points === 'number') {
+                            context.commit('auth/addScore', returned_data.points, { root: true });
+                        }
                     }
                     break;
                 
@@ -204,7 +222,6 @@ export default{
         const gameID = context.getters.gameID;
         const socket = context.getters.socket;
         
-        // If in a game, send exit event
         if (gameID !== 0 && socket && socket.readyState === WebSocket.OPEN) {
             const event = new Event('game_exit', gameID, {});
             try {
@@ -221,6 +238,9 @@ export default{
         
         // Reset all WebSocket state
         context.commit('resetWebSocket');
+
+        // Redirect to front page after logout from a game
+        router.push('/frontpage');
     },
 
     sendEvent(context, eventdata){
@@ -288,7 +308,6 @@ export default{
             return;
         }
         
-        // Remove discarded cards from local state immediately
         discardCards.forEach(cardId => {
             context.commit('deleteCard', cardId);
         });

@@ -13,31 +13,26 @@ type Game struct {
 	cards   CardList
 	isFull  bool
 
-	turncounter        int
-	starterplayer      *Client
-	roundcards         CardList
-	cardsPlayedInRound int // tracks how many cards have been played in current round
-	points             []int
-	bettingpool        int
-	gamecolor          string
-	declarer           *Client
-	tallon             CardList
-
-	// Bidding phase fields
+	turncounter         int
+	starterplayer       *Client
+	roundcards          CardList
+	cardsPlayedInRound  int
+	points              []int
+	bettingpool         int
+	gamecolor           string
+	declarer            *Client
+	tallon              CardList
 	biddingActive       bool
-	currentBidder       int // index of player whose turn it is to bid
-	startingBidderIndex int // tracks which player starts bidding (rotates each game)
+	currentBidder       int
+	startingBidderIndex int
 	consecutivePasses   int
 	passesAfterDeclarer int
 	gamePhase           string // "bidding", "talon_exchange", "playing"
-
-	// Play again voting
-	playAgainVotes map[int]bool // player index -> vote (true/false)
+	playAgainVotes      map[int]bool
 
 	sync.RWMutex
 }
 
-// Color strength values for comparison
 var colorStrength = map[string]int{
 	"tok":   1,
 	"makk":  2,
@@ -69,7 +64,6 @@ func NewGame(id int) *Game {
 		gamePhase:           "bidding",
 		playAgainVotes:      make(map[int]bool),
 	}
-	// Set tallon to last 2 cards
 	g.tallon = g.cards[30:32]
 	return g
 }
@@ -137,19 +131,6 @@ func (g *Game) SetHands(c *Client) ([]int, error) {
 	}
 
 	return ids, nil
-}
-
-// checking if the card that was played is in the hands of the player
-func (g *Game) playedCardCheck(cardId int, c *Client) (Card, error) {
-
-	for i := range g.cards {
-		if g.cards[i].ID == cardId && g.cards[i].Hand == c {
-			g.cards[i].Hand = nil
-			return g.cards[i], nil
-		}
-	}
-
-	return Card{}, errors.New("the card is not in the hand of the player wrong move")
 }
 
 /* ------------------------------------- Playing ------------------------------------- */
@@ -223,60 +204,6 @@ func (g *Game) RoundHandler(c *Client, cardId int) (int, *Client, string) {
 
 }
 
-// ---------------------------------------------------------------------------------------------
-func (g *Game) NextPlayer() (int, error) {
-
-	index := -1
-
-	for i := range g.players {
-		if g.players[i] == g.starterplayer {
-			index = i
-			break
-		}
-	}
-	if index == -1 {
-		return -1, errors.New("there is no starter player")
-	}
-
-	nextidx := (g.cardsPlayedInRound + index) % len(g.players)
-
-	//nextp := g.players[nextidx]
-
-	if g.players[nextidx] == nil {
-		return -1, errors.New("no next player")
-	}
-
-	return nextidx, nil
-}
-
-// ---------------------------------------------------------------------------------------------
-func (g *Game) currentPlayerCheck(c *Client) error {
-
-	index := -1
-
-	for i := range g.players {
-		if g.players[i] == g.starterplayer {
-			index = i
-			break
-		}
-	}
-	if index == -1 {
-		log.Printf("DEBUG: starterplayer is nil or not found")
-		return errors.New("there is no starter player")
-	}
-
-	offset := g.cardsPlayedInRound
-	currentp := (index + offset) % len(g.players)
-
-	log.Printf("DEBUG: starter index=%d, cardsPlayedInRound=%d, offset=%d, currentp=%d, clickingPlayer=%s, expectedPlayer=%s",
-		index, g.cardsPlayedInRound, offset, currentp, c.username, g.players[currentp].username)
-
-	if g.players[currentp] != c {
-		return errors.New("there is no player like this")
-	}
-	return nil
-}
-
 /* ------------------------------------- Evaluate Round  ------------------------------------- */
 func (g *Game) EvaluateRound() (*Client, error) {
 
@@ -336,14 +263,12 @@ func (g *Game) StartBidding() {
 	g.bettingpool = 0
 }
 
-// HandleBid processes a bid from a player
-// action can be "pass" or "declare"
+// paass or action
 // color is the chosen color if declaring (tok, makk, zold, piros)
 func (g *Game) HandleBid(c *Client, action string, color string) (string, error) {
 	g.Lock()
 	defer g.Unlock()
 
-	// Verify it's this player's turn to bid
 	if g.players[g.currentBidder] != c {
 		return "", errors.New("not your turn to bid")
 	}
@@ -351,40 +276,34 @@ func (g *Game) HandleBid(c *Client, action string, color string) (string, error)
 	if action == "pass" {
 		g.consecutivePasses++
 
-		// If declarer exists, count passes after declarer
 		if g.declarer != nil {
 			g.passesAfterDeclarer++
 
-			// If 2 consecutive passes after declarer, move to talon phase
 			if g.passesAfterDeclarer >= 2 {
 				g.gamePhase = "talon_exchange"
 				g.biddingActive = false
 				return "talon_exchange", nil
 			}
 		} else {
-			// No declarer yet, check if 6 consecutive passes
+
 			if g.consecutivePasses >= 6 {
 				return "game_closed", errors.New("no declarer after 6 passes")
 			}
 		}
 
-		// Move to next bidder
 		g.currentBidder = (g.currentBidder + 1) % len(g.players)
 		return "continue_bidding", nil
 	}
 
 	if action == "declare" {
-		// Validate color
 		if _, exists := colorStrength[color]; !exists {
 			return "", errors.New("invalid color choice")
 		}
 
-		// Check if this is a valid one-up
 		if g.declarer != nil {
 			currentStrength := colorStrength[g.gamecolor]
 			newStrength := colorStrength[color]
 
-			// Can only one-up with stronger color OR same piros
 			if newStrength < currentStrength {
 				return "", errors.New("must choose stronger color to one-up")
 			}
@@ -395,6 +314,7 @@ func (g *Game) HandleBid(c *Client, action string, color string) (string, error)
 
 		// Set new declarer
 		g.declarer = c
+		g.starterplayer = c
 		g.gamecolor = color
 		g.bettingpool++
 		g.consecutivePasses = 0
@@ -408,12 +328,11 @@ func (g *Game) HandleBid(c *Client, action string, color string) (string, error)
 	return "", errors.New("invalid action")
 }
 
-// HandleTalonExchange processes talon exchange from declarer
+/* ------------------------------------- Talon Exchange ------------------------------------- */
 func (g *Game) HandleTalonExchange(c *Client, discardCards []int) error {
 	g.Lock()
 	defer g.Unlock()
 
-	// Only declarer can exchange
 	if c != g.declarer {
 		return errors.New("only declarer can exchange talon")
 	}
@@ -422,17 +341,14 @@ func (g *Game) HandleTalonExchange(c *Client, discardCards []int) error {
 		return errors.New("not in talon exchange phase")
 	}
 
-	// Validate discard count (1 or 2 cards)
 	if len(discardCards) < 1 || len(discardCards) > 2 {
 		return errors.New("must discard 1 or 2 cards")
 	}
 
-	// Verify cards belong to declarer and remove them from hand
 	for _, cardID := range discardCards {
 		found := false
 		for i := range g.cards {
 			if g.cards[i].ID == cardID && g.cards[i].Hand == c {
-				// Remove from hand (these cards go to talon)
 				g.cards[i].Hand = nil
 				found = true
 				break
@@ -443,15 +359,11 @@ func (g *Game) HandleTalonExchange(c *Client, discardCards []int) error {
 		}
 	}
 
-	// Talon cards were already added to declarer's hand in SendTalonToDeclarer
-	// No need to add them again here
-
-	// Move to playing phase
 	g.gamePhase = "playing"
 	return nil
 }
 
-/* ------------------------------------- Helper Functions ------------------------------------- */
+/* ------------------------------------- Helpers ------------------------------------- */
 
 func (g *Game) GetCurrentBidder() *Client {
 	g.RLock()
@@ -463,4 +375,66 @@ func (g *Game) GetGamePhase() string {
 	g.RLock()
 	defer g.RUnlock()
 	return g.gamePhase
+}
+
+func (g *Game) currentPlayerCheck(c *Client) error {
+
+	index := -1
+
+	for i := range g.players {
+		if g.players[i] == g.starterplayer {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		log.Printf("DEBUG: starterplayer is nil or not found")
+		return errors.New("there is no starter player")
+	}
+
+	offset := g.cardsPlayedInRound
+	currentp := (index + offset) % len(g.players)
+
+	if g.players[currentp] != c {
+		return errors.New("there is no player like this")
+	}
+	return nil
+}
+
+func (g *Game) NextPlayer() (int, error) {
+
+	index := -1
+
+	for i := range g.players {
+		if g.players[i] == g.starterplayer {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		return -1, errors.New("there is no starter player")
+	}
+
+	nextidx := (g.cardsPlayedInRound + index) % len(g.players)
+
+	//nextp := g.players[nextidx]
+
+	if g.players[nextidx] == nil {
+		return -1, errors.New("no next player")
+	}
+
+	return nextidx, nil
+}
+
+// checking if the card that was played is in the hands of the player
+func (g *Game) playedCardCheck(cardId int, c *Client) (Card, error) {
+
+	for i := range g.cards {
+		if g.cards[i].ID == cardId && g.cards[i].Hand == c {
+			g.cards[i].Hand = nil
+			return g.cards[i], nil
+		}
+	}
+
+	return Card{}, errors.New("the card is not in the hand of the player wrong move")
 }

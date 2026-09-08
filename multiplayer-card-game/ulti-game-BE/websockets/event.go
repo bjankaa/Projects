@@ -1,14 +1,14 @@
 package websockets
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type Event struct {
 	Type    string          `json:"type"`
 	GameId  int             `json:"id"`
 	Payload json.RawMessage `json:"payload"`
 }
-
-type EventHandler func(event Event, c *Client) error
 
 const (
 	EventCardClicked   = "card_clicked"
@@ -21,14 +21,15 @@ const (
 	EventPlayAgain     = "play_again"
 )
 
-// json blob
+/*Special Event structures to use to extract data from json*/
+
 type CardClickedEvent struct {
 	CardId int `json:"cardid"`
 }
 
 type BidActionEvent struct {
 	Action string `json:"action"` // "pass" or "declare"
-	Color  string `json:"color"`  // "tok", "makk", "zold", "piros" (only if declaring)
+	Color  string `json:"color"`  // "tok", "makk", "zold", "piros"
 }
 
 type TalonExchangeEvent struct {
@@ -38,7 +39,3 @@ type TalonExchangeEvent struct {
 type PlayAgainEvent struct {
 	Vote bool `json:"vote"` // true to play again, false to exit
 }
-
-// type GameInitEvent struct {
-// 	Cards CardList `json:"cards"`
-// }

@@ -1,9 +1,11 @@
 export default {
     async login(context, payload) {
-        // const url = "http://localhost:3000/auth";
 
         const res = await fetch('/api/auth', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 email: payload.email,
                 password: payload.password,
@@ -14,7 +16,7 @@ export default {
         const resData = await res.json();
 
         if (!res.ok) {
-            const error = new Error(resData.message || 'Failed to authenticate!');
+            const error = new Error(resData.message || 'Failed to Login in!');
             throw error;
         }
 
@@ -25,13 +27,23 @@ export default {
             token: resData.token
         });
 
+        try {
+            const profile = await context.dispatch('fetchProfile');
+            if (profile && typeof profile.score === 'number') {
+                context.commit('setScore', profile.score);
+            }
+        } catch (e) {
+            console.error('Failed to fetch profile after login:', e);
+        }
+
     },
     async signup(context, payload) {
 
-        // const url = 'http://localhost:5173/auth';
-
         const res = await fetch('/api/auth', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 name: payload.name,
                 email: payload.email,
@@ -39,6 +51,12 @@ export default {
                 state: "signup"
             })
         })
+        const resData = await res.json();
+
+        if (!res.ok) {
+            const error = new Error(resData.message || 'Failed to sign up!');
+            throw error;
+        }
     },
 
     async logout(context) {
@@ -75,6 +93,13 @@ export default {
         }
 
         const data = await res.json();
+
+        if (data && typeof data.email === 'string') {
+            context.commit('setEmail', data.email);
+        }
+        if (data && typeof data.score === 'number') {
+            context.commit('setScore', data.score);
+        }
         return data;
     },
 

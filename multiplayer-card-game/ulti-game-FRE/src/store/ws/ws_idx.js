@@ -8,6 +8,7 @@ export default{
         return {
             socket: null,
             isConnected: false,
+
             gameID: 0,
             cards: [],
             yourturn: false,
@@ -18,17 +19,16 @@ export default{
             roundWinner: -1,
             playedCards: [],
             gameStarted: false,
-            playerNames: {}, // Map of playerIndex -> playerName
-            // Bidding phase
+            playerNames: {}, 
             gamePhase: 'waiting', // 'waiting', 'bidding', 'talon_exchange', 'playing', 'closed', 'ended'
             currentBidder: -1,
-            isYourBid: false,
+            isYourBid: false, //nem szükséges
             lastBid: null,
             gameColor: '',
             declarerIndex: -1,
             talonCards: [],
-            gameResult: null, // { isDeclarerWin, points }
-            playAgainVotes: {}, // Map of playerIndex -> vote (true/false)
+            gameResult: null, 
+            playAgainVotes: {}, 
         };
     },
     getters,

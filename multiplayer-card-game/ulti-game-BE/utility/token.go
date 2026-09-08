@@ -2,12 +2,38 @@ package utility
 
 import (
 	"errors"
+	"log"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const helper = "key"
+var jwtSecret []byte
+
+func getEnvOrFile(key string) string {
+	fileKey := key + "_FILE"
+	if path := os.Getenv(fileKey); path != "" {
+		b, err := os.ReadFile(path)
+		if err == nil {
+			return strings.TrimSpace(string(b))
+		}
+		log.Printf("Failed reading secrt: %v", err)
+	}
+	return os.Getenv(key)
+}
+
+// automatic call
+func init() {
+
+	sec := getEnvOrFile("JWT_SECRET")
+	sec = strings.TrimSpace(sec)
+	if sec == "" {
+		sec = "key"
+	}
+	jwtSecret = []byte(sec)
+}
 
 func GenerateToken(email string, userId int64) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -15,7 +41,7 @@ func GenerateToken(email string, userId int64) (string, error) {
 		"userId": userId,
 		"exp":    time.Now().Add(time.Hour * 8).Unix(),
 	})
-	return token.SignedString([]byte(helper))
+	return token.SignedString(jwtSecret)
 }
 
 func VerifyToken(token string) (int64, error) {
@@ -25,11 +51,11 @@ func VerifyToken(token string) (int64, error) {
 		if !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return []byte(helper), nil
+		return jwtSecret, nil
 	})
 
 	if err != nil {
-		return 0, errors.New("could not parse token")
+		return 0, err
 	}
 
 	tokenisValid := parsedtoken.Valid

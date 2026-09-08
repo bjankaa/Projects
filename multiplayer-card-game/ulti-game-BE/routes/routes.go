@@ -14,10 +14,14 @@ func AvaibleRoutes(server *gin.Engine) {
 	server.GET("/profile", getProfile)
 	server.PUT("/change-email", changeEmail)
 	server.PUT("/change-password", changePassword)
+	server.GET("/games", getGames)
 
 	//websocket
 	server.GET("/game", manager.WSHandler)
 
 	//test
 	server.GET("/frontpage", getUsers)
+
+	// Health check
+	server.GET("/health", func(c *gin.Context) { c.Status(200) })
 }
